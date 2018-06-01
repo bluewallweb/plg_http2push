@@ -160,9 +160,12 @@
             }
           }
         }
-        // Continue reducing the resource list until the header is 8KiB or less
-        while (strlen($link = implode(', ', $resources)) > 8184) {
-          array_pop($resources);
+        // Determine whether we should limit the size of the 'Link' header
+        if ($this->params->get('header_limit', false)) {
+          // Reduce the resource list until the header size is <= 8 KiB
+          while (strlen($link = implode(', ', $resources)) > 8184) {
+            array_pop($resources);
+          }
         }
         // Update the list of HTTP/2 push resources via the 'Link' header
         $this->app->setHeader('Link', $link, false);
