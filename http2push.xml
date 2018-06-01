@@ -18,6 +18,7 @@
     <fields name="params">
       <fieldset name="basic">
         <field     name="header_limit" type="radio" default="0"
+                  class="btn-group btn-group-yesno"
                   label="PLG_HTTP2PUSH_HEADER_LIMIT"
             description="PLG_HTTP2PUSH_HEADER_LIMIT_DESC">
           <option value="0">JOFF</option>
