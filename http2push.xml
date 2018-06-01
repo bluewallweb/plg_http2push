@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE install>
+<extension version="3.8" type="plugin" group="system" method="upgrade">
+  <name>plg_system_http2push</name>
+  <author>Clay Freeman</author>
+  <creationDate>June 2018</creationDate>
+  <copyright>2018 Clay Freeman. All rights reserved.</copyright>
+  <license>GNU General Public License version 3 or later</license>
+  <authorEmail>joomla@clayfreeman.com</authorEmail>
+  <authorUrl>https://clayfreeman.com</authorUrl>
+  <version>1.0.0</version>
+  <description>PLG_HTTP2PUSH_DESCRIPTION</description>
+  <files>
+    <filename plugin="http2push">http2push.php</filename>
+    <folder>language</folder>
+  </files>
+</extension>
