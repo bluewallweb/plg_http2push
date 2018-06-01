@@ -160,6 +160,7 @@
             }
           }
         }
+        $link = implode(', ', $resources);
         // Determine whether we should limit the size of the 'Link' header
         if ($this->params->get('header_limit', false)) {
           // Reduce the resource list until the header size is <= 8 KiB
