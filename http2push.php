@@ -1,7 +1,7 @@
 <?php
   /**
    * @copyright  Copyright (C) Clay Freeman. All rights reserved.
-   * @license    GNU General Public License version 3 or later.
+   * @license    GNU Lesser General Public License version 3 or later.
    */
 
   // Prevent unauthorized access to this file outside of the context of a
