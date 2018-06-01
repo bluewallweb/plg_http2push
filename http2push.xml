@@ -8,7 +8,7 @@
   <license>GNU General Public License version 3 or later</license>
   <authorEmail>joomla@clayfreeman.com</authorEmail>
   <authorUrl>https://clayfreeman.com</authorUrl>
-  <version>1.0.0</version>
+  <version>1.0.1</version>
   <description>PLG_HTTP2PUSH_DESCRIPTION</description>
   <files>
     <filename plugin="http2push">http2push.php</filename>
