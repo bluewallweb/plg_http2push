@@ -17,5 +17,6 @@
     <maintainer>Clay Freeman</maintainer>
     <maintainerurl>https://bluewall.com</maintainerurl>
     <targetplatform name="joomla" version="3.[89]" />
+    <client>0</client>
   </update>
 </updates>
