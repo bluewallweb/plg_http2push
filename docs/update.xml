@@ -3,7 +3,7 @@
   <update>
     <name>HTTP/2 Server Push</name>
     <description/>
-    <element>plg_http2push</element>
+    <element>http2push</element>
     <type>plugin</type>
     <folder>system</folder>
     <version>1.0.4</version>
