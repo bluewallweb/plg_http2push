@@ -7,7 +7,7 @@
     <type>plugin</type>
     <folder>system</folder>
     <version>1.0.3</version>
-    <infourl title="Joomla!">https://github.com/bluewallweb/plg_http2push/releases/latest</infourl>
+    <infourl title="bluewallweb/plg_http2push">https://github.com/bluewallweb/plg_http2push/releases/latest</infourl>
     <downloads>
       <downloadurl type="full" format="zip">https://github.com/bluewallweb/plg_http2push/archive/1.0.3.zip</downloadurl>
     </downloads>
