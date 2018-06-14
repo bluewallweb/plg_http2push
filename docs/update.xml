@@ -1,21 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <updates>
-	<update>
-		<name>HTTP/2 Server Push</name>
-		<description>HTTP/2 Server Push intercepts Joomla's HTTP response body on each page load to generate a Link header that contains preloading information for remote resources. A size limit of approximately 8 KiB is imposed on the Link header to avoid issues with header size limitations.</description>
-		<element>plg_http2push</element>
+  <update>
+    <name>HTTP/2 Server Push</name>
+    <description>HTTP/2 Server Push intercepts Joomla's HTTP response body on each page load to generate a Link header that contains preloading information for remote resources. A size limit of approximately 8 KiB is imposed on the Link header to avoid issues with header size limitations.</description>
+    <element>plg_http2push</element>
     <type>plugin</type>
-		<folder>system</folder>
-		<version>1.0.2</version>
-		<infourl title="Joomla!">https://github.com/bluewallweb/plg_http2push/releases/latest</infourl>
-		<downloads>
-			<downloadurl type="full" format="zip">https://github.com/bluewallweb/plg_http2push/archive/1.0.2.zip</downloadurl>
-		</downloads>
-		<tags>
-			<tag>stable</tag>
-		</tags>
-		<maintainer>Clay Freeman</maintainer>
-		<maintainerurl>https://bluewall.com</maintainerurl>
-		<targetplatform name="joomla" version="3.[89]" />
-	</update>
+    <folder>system</folder>
+    <version>1.0.2</version>
+    <infourl title="Joomla!">https://github.com/bluewallweb/plg_http2push/releases/latest</infourl>
+    <downloads>
+      <downloadurl type="full" format="zip">https://github.com/bluewallweb/plg_http2push/archive/1.0.2.zip</downloadurl>
+    </downloads>
+    <tags>
+      <tag>stable</tag>
+    </tags>
+    <maintainer>Clay Freeman</maintainer>
+    <maintainerurl>https://bluewall.com</maintainerurl>
+    <targetplatform name="joomla" version="3.[89]" />
+  </update>
 </updates>
