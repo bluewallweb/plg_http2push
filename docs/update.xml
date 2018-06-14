@@ -2,7 +2,7 @@
 <updates>
   <update>
     <name>HTTP/2 Server Push</name>
-    <description>HTTP/2 Server Push intercepts Joomla's HTTP response body on each page load to generate a Link header that contains preloading information for remote resources. A size limit of approximately 8 KiB is imposed on the Link header to avoid issues with header size limitations.</description>
+    <description/>
     <element>plg_http2push</element>
     <type>plugin</type>
     <folder>system</folder>
