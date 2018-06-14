@@ -8,11 +8,14 @@ large performance boost (especially on slow cellular networks).
 
 # Installation
 
-On this project's GitHub page, click 'Clone or download' then 'Download ZIP' to
-download the plugin. Once the plugin is downloaded, navigate to 'Extensions' >
-'Manage' > 'Install' on your Joomla! site, then click on the
-'Upload Package File' tab. Next, drag the downloaded ZIP archive into the upload
-area to install it.
+Click here to download the latest release of the plugin. Once the plugin is
+downloaded, navigate to 'Extensions' > 'Manage' > 'Install' on your Joomla!
+site, then click on the 'Upload Package File' tab. Next, drag the downloaded
+ZIP archive into the upload area to install it.
+
+**Tip**: For extra security, make sure that the "Verified" tag appears in the
+left column on the release page. This means that the release was signed and
+validated using GPG.
 
 # Configuration
 
