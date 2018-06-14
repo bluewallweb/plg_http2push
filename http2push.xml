@@ -8,7 +8,7 @@
   <license>GNU Lesser General Public License version 3 or later</license>
   <authorEmail>info@bluewall.com</authorEmail>
   <authorUrl>https://bluewall.com</authorUrl>
-  <version>1.0.2</version>
+  <version>1.0.3</version>
   <description>PLG_HTTP2PUSH_DESCRIPTION</description>
   <files>
     <filename plugin="http2push">http2push.php</filename>
