@@ -8,7 +8,7 @@ large performance boost (especially on slow cellular networks).
 
 # Installation
 
-Click here to download the latest release of the plugin. Once the plugin is
+[Click here] to download the latest release of the plugin. Once the plugin is
 downloaded, navigate to 'Extensions' > 'Manage' > 'Install' on your Joomla!
 site, then click on the 'Upload Package File' tab. Next, drag the downloaded
 ZIP archive into the upload area to install it.
@@ -56,6 +56,7 @@ GNU Lesser General Public License for more details.
 You should have received a copy of the GNU Lesser General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 
+[Click here]: https://github.com/bluewallweb/plg_http2push/releases/latest
 [`onAfterRender`]: https://docs.joomla.org/Plugin/Events/System#onAfterRender
 [`Link`]: https://www.smashingmagazine.com/2017/04/guide-http2-server-push
 [Clay Freeman]: https://github.com/clayfreeman
