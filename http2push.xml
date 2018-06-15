@@ -10,6 +10,7 @@
   <authorUrl>https://bluewall.com</authorUrl>
   <version>1.1.0</version>
   <description>PLG_HTTP2PUSH_DESCRIPTION</description>
+  <php_minimum>7.1.0</php_minimum>
   <files>
     <filename plugin="http2push">http2push.php</filename>
     <folder>language</folder>
