@@ -14,7 +14,7 @@
   /**
    * The HTTP/2 Push automated Joomla! system plugin.
    */
-  class plgSystemHttp2Push extends CMSPlugin {
+  final class plgSystemHttp2Push extends CMSPlugin {
     /**
      * A reference to Joomla's application instance.
      *
