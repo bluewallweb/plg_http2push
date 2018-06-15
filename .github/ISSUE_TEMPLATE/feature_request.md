@@ -1,7 +1,6 @@
 ---
 name: Feature Request
 about: Create a feature request for something you would like to see added to the project.
-
 ---
 
 **Is your feature request related to a problem? Please describe.**
