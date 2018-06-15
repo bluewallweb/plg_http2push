@@ -2,14 +2,14 @@
 <!DOCTYPE install>
 <extension version="3.8" type="plugin" group="system" method="upgrade">
   <name>PLG_SYSTEM_HTTP2PUSH</name>
+  <description>PLG_HTTP2PUSH_DESCRIPTION</description>
+  <version>1.1.4</version>
   <author>Clay Freeman</author>
+  <authorEmail>info@bluewall.com</authorEmail>
+  <authorUrl>https://bluewall.com</authorUrl>
   <creationDate>June 2018</creationDate>
   <copyright>2018 Clay Freeman. All rights reserved.</copyright>
   <license>GNU Lesser General Public License version 3 or later</license>
-  <authorEmail>info@bluewall.com</authorEmail>
-  <authorUrl>https://bluewall.com</authorUrl>
-  <version>1.1.3</version>
-  <description>PLG_HTTP2PUSH_DESCRIPTION</description>
   <scriptfile>install.php</scriptfile>
   <files>
     <filename plugin="http2push">http2push.php</filename>
