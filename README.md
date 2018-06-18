@@ -6,6 +6,17 @@ that they are needed. As a result, the number of round-trips that are required
 to fully load a web page may be reduced, resulting in a potentially large
 performance boost (especially on slow cellular networks).
 
+# System Requirements
+
+Several system requirements must be met before you can make appropriate use of
+this plugin:
+
+1. PHP `>=7.1`
+2. Joomla! `>=3.8`
+3. An HTTP/2 web server with push capability:
+  * Apache `>=2.4.17` (with `mod_http2`)
+  * NGINX `>=1.13.9`
+
 # Installation
 
 [Click here] to download the latest release of the plugin. Once the plugin is
