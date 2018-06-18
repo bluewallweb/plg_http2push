@@ -13,7 +13,7 @@ this plugin:
 
 1. PHP `>=7.1`
 2. Joomla! `>=3.8`
-3. An HTTP/2 web server with push capability:
+3. HTTP/2 web server with push capability:
    1. Apache `>=2.4.17` (with `mod_http2`)
    2. NGINX `>=1.13.9`
 
