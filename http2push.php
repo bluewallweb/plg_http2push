@@ -123,11 +123,19 @@
         $resources = [];
         // Fetch the rendered application response body
         $response  = new \DOMDocument();
+        // Suppress PHP-level warnings from parsing a malformed document and
+        // preserve the current libxml logging preference
+        $logging   = libxml_use_internal_errors(true);
+        // Parse the HTML document body for processing
         $response->loadHTML($this->app->getBody());
+        // Restore the previous logging preference for libxml
+        libxml_use_internal_errors($logging);
+        // Import the `DOMDocument` tree into a `SimpleXMLElement` instance
         $response  = simplexml_import_dom($response);
-        // Extract all applicable external resources from the DOM
+        // Extract all applicable external resources from the DOM using XPath
         $search    = $response->xpath('//script[@src]|'.
           '//link[@href and @rel]|//img[@src]');
+        // Iterate over each resource to process it for preload/preconnect
         foreach ($search as $item) {
           // Process each item based on its element name
           if (strtolower($item->getName()) === 'img') {
