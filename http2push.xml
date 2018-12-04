@@ -32,6 +32,6 @@
     </fields>
   </config>
   <updateservers>
-    <server type="extension" name="PLG_SYSTEM_HTTP2PUSH">https://bluewallweb.github.io/plg_system_http2push/update.xml</server>
+    <server type="extension" name="PLG_SYSTEM_HTTP2PUSH">https://bluewallweb.github.io/plg_http2push/update.xml</server>
   </updateservers>
 </extension>
