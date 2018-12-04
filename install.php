@@ -65,11 +65,10 @@ final class plgSystemHttp2PushInstallerScript extends InstallerScript {
   /**
    * Checks that the required PHP API's are installed.
    *
-   * This plugin depends on the `\DOMDocument` and `\SimpleXMLElement` classes
-   * and the `\simplexml_import_dom()` and `\libxml_use_internal_errors()`
-   * functions available in PHP's XML extension on many distributions or by
-   * statically compiling PHP with the `--enable-dom` and
-   * `--enable-simplexml` flags.
+   * This plugin depends on the `\DOMDocument` and `\DOMXPath` classes and the
+   * `\libxml_use_internal_errors()` function available in PHP's XML extension
+   * on many distributions or by statically compiling PHP with the
+   * `--enable-dom` and `--enable-simplexml` flags.
    *
    * @param   string            $type    The type of change (install,
    *                                     update, ...).
@@ -82,11 +81,12 @@ final class plgSystemHttp2PushInstallerScript extends InstallerScript {
     // Check a list of classes that are required for this plugin to work
     $classes = \array_map([$this, 'classExists'], [
       '\\DOMDocument',
-      '\\SimpleXMLElement'
+      '\\DOMElement',
+      '\\DOMNode',
+      '\\DOMXPath'
     ]);
     // Check a list of functions that are required for this plugin to work
     $functions = \array_map([$this, 'functionExists'], [
-      '\\simplexml_import_dom',
       '\\libxml_use_internal_errors'
     ]);
     // Ensure that all of the required symbols exist

@@ -64,7 +64,7 @@ final class plgSystemHttp2Push extends CMSPlugin {
    */
   public function buildFilePath(array $cpts): ?string {
     return (isset($cpts['path']) ? $cpts['path'].
-      (isset($cpts['query']) ? '?'.$cpts['query'] : '') : null);
+      (isset($cpts['query']) ? '?'.$cpts['query'] : '') : NULL);
   }
 
   /**
@@ -95,13 +95,13 @@ final class plgSystemHttp2Push extends CMSPlugin {
     $port = (\strlen($port) > 0 ? ':'.$port : '');
     // Assemble the constituent components of this URL
     return (isset($cpts['host']) ? $scheme.'://'.$auth.
-      $cpts['host'].$port : null);
+      $cpts['host'].$port : NULL);
   }
 
   /**
    * Builds a 'Link' header value from an array of resource clauses.
    *
-   * If `$limit` is true, any clauses that cause the full 'Link' header to
+   * If `$limit` is `TRUE`, any clauses that cause the full 'Link' header to
    * overrun 8 KiB will be ignored.
    *
    * @param   array   $clauses  An array of pre-rendered 'Link' clauses.
@@ -132,32 +132,35 @@ final class plgSystemHttp2Push extends CMSPlugin {
    * reduced to a simplified descriptor that details how the resource should be
    * handled when rendering its clause for the 'Link' header.
    *
-   * @param   SimpleXMLElement  $body  A document containing preload/preconnect
-   *                                   resource candidates.
+   * @param   DOMDocument  $body  A document containing preload/preconnect
+   *                              resource candidates.
    *
-   * @return  array                    An array of objects describing how each
-   *                                   resource should be handled.
+   * @return  array               An array of objects describing how each
+   *                              resource should be handled.
    */
-  protected function extractResources(\SimpleXMLElement $body): array {
+  protected function extractResources(\DOMDocument $body): array {
+    // Create an instance of `\DOMXPath` to support searching the document tree
+    // with XPath (similar to `\SimpleXMLElement`)
+    $xpath = new \DOMXPath($body);
     // First, locate all possible resources for preload/preconnect
-    $res = $body->xpath('//img[@src]|//link[@href and @rel]|//script[@src]');
+    $res = $xpath->query('//img[@src]|//link[@href and @rel]|//script[@src]');
     // Reduce the array of resource candidates to a list of item descriptors
-    return \array_map(function(\SimpleXMLElement $item): object {
+    return \array_map(function(\DOMElement $item): object {
       // Fetch the name of the element node later used to satisfy
       // element-specific preconditions
-      $type = \strtolower($item->getName());
+      $type = $item->nodeName;
       // Canonicalize the 'rel' attribute to the best of our ability
-      $rel = \strtolower(\strval($item['rel'] ?? ''));
+      $rel = \strtolower($item->getAttribute('rel'));
       // Attempt to determine the name of the attribute holding the URL
       $attr = ($type === 'link' ? 'href' : 'src');
-      // Verify that the source URL can be found before continuing
-      if (isset($item[$attr]) && $item[$attr] !== '') {
-        // Fetch the URL from the item and sanitize it
-        $url = $this->sanitizeURL(\strval($item[$attr]));
-      }
+      // Fetch the URL from the item and attempt to sanitize it
+      $url = $this->sanitizeURL($item->getAttribute($attr));
       // Create an item descriptor to describe how it should be rendered
       return (object)['rel' => $rel, 'type' => $type, 'url' => $url ?? ''];
-    }, $res);
+    }, \array_filter(\iterator_to_array($res), function(\DOMNode $node): bool {
+      // Ensure that we only process elements as opposed to all nodes
+      return $node instanceof \DOMElement;
+    }));
   }
 
   /**
@@ -191,7 +194,7 @@ final class plgSystemHttp2Push extends CMSPlugin {
       return (isset($target, $server) && $target === $server);
     }
     // Assume that the URL is self hosted if there is no host component
-    return true;
+    return TRUE;
   }
 
   /**
@@ -212,60 +215,54 @@ final class plgSystemHttp2Push extends CMSPlugin {
     // Don't execute this plugin on the back end; we don't want the site to
     // accidentally become administratively inaccessible due to this plugin
     if (!$this->app->isAdmin()) {
-      // Attempt to parse the document body into a `SimpleXMLElement` instance
+      // Attempt to parse the document body into a `\DOMDocument` instance
       $document = $this->parseDocumentBody($this->app->getBody());
       // Ensure that the document body was successfully parsed before running
-      if ($document instanceof \SimpleXMLElement) {
+      if ($document instanceof \DOMDocument) {
         // Extract and prepare all applicable resources from the parsed
         // document body
         $resources = $this->extractResources($document);
         $resources = $this->prepareResources($resources);
         // Build the 'Link' header, keeping the configured size limit in check
-        $limit  = \boolval($this->params->get('header_limit', false));
+        $limit  = \boolval($this->params->get('header_limit', FALSE));
         $header = $this->buildLinkHeader($resources, $limit);
         // Set the header using the Joomla! application framework
-        $this->app->setHeader('Link', $header, false);
+        $this->app->setHeader('Link', $header, FALSE);
       }
     }
   }
 
   /**
-   * Attempt to parse the provided HTML document body into a SimpleXMLElement.
+   * Attempt to parse the provided HTML document body into a DOMDocument.
    *
-   * If the provided document body is non-null and non-empty, this method will
-   * attempt to silently parse it using `DOMDocument::loadHTML()`. Error
-   * reporting is disabled to prevent overflow of `stderr` in FPM-based hosting
-   * environments.
+   * If the provided document body declares a document type of "HTML"
+   * (case-insensitive), this method will attempt to silently parse it using
+   * `\DOMDocument::loadHTML()`. Error reporting is disabled to prevent overflow
+   * of `stderr` in FPM-based hosting environments.
    *
-   * Once the `DOMDocument` instance has successfully parsed the document body,
-   * it is then converted to a `SimpleXMLElement` instance so that XPath is
-   * supported.
+   * @param   string       $body  An HTML document body to be parsed.
    *
-   * @param   string            $body  An HTML document body to be parsed.
-   *
-   * @return  SimpleXMLElement         `SimpleXMLElement` instance on success,
-   *                                   `NULL` on failure.
+   * @return  DOMDocument         `\DOMDocument` instance on success,
+   *                              `NULL` on failure.
    */
-  protected function parseDocumentBody(?string $body): ?\SimpleXMLElement {
-    // Create a DOMDocument instance to facilitate parsing the document body and
-    // subsequent conversion to a SimpleXMLElement instance
-    $document = new \DOMDocument();
-    // Ensure that the document body is a non-empty string before parsing it
-    if (\is_string($body) && \strlen($body) > 0) {
+  protected function parseDocumentBody(?string $body): ?\DOMDocument {
+    // Create a status variable used to determine whether the document was
+    // successfully parsed by `\DOMDocument`
+    $parsed = FALSE;
+    // Ensure that the document body supposes HTML format before continuing
+    if (\preg_match('/^\\s*<!DOCTYPE\\s+html\\b/i', $body)) {
       // Configure libxml to use its internal logging mechanism and preserve the
       // current libxml logging preference for later restoration
-      $logging = \libxml_use_internal_errors(true);
-      // Attempt to parse the document body for conversion
-      if ($document->loadHTML($body) === TRUE) {
-        // Attempt to import the DOMDocument tree into a SimpleXMLElement
-        // instance (so that XPath can be used)
-        $document = \simplexml_import_dom($document);
-      }
+      $logging = \libxml_use_internal_errors(TRUE);
+      // Create a DOMDocument instance to facilitate parsing the document body
+      $document = new \DOMDocument();
+      // Attempt to parse the document body as HTML
+      $parsed = ($document->loadHTML($body) === TRUE);
       // Restore the previous logging preference for libxml
       \libxml_use_internal_errors($logging);
     }
-    // Check if the document body was parsed and converted successfully
-    return $document instanceof \SimpleXMLElement ? $document : NULL;
+    // Check if the document body was parsed successfully
+    return $parsed === TRUE ? $document : NULL;
   }
 
   /**
@@ -356,13 +353,13 @@ final class plgSystemHttp2Push extends CMSPlugin {
   /**
    * Attempts to sanitize the provided URL for consistency.
    *
-   * If the provided URL fails sanitization, `null` is returned instead.
+   * If the provided URL fails sanitization, `NULL` is returned instead.
    *
    * @param   string  $url  The input URL to be sanitized.
    *
    * @return  string        The resulting sanitized URL.
    */
   public function sanitizeURL(string $url): ?string {
-    return \filter_var($url, \FILTER_SANITIZE_URL) ?: null;
+    return \filter_var($url, \FILTER_SANITIZE_URL) ?: NULL;
   }
 }

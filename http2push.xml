@@ -3,7 +3,7 @@
 <extension version="3.8" type="plugin" group="system" method="upgrade">
   <name>PLG_SYSTEM_HTTP2PUSH</name>
   <description>PLG_SYSTEM_HTTP2PUSH_DESCRIPTION</description>
-  <version>1.2.1</version>
+  <version>1.2.2</version>
   <author>Clay Freeman</author>
   <authorEmail>info@bluewall.com</authorEmail>
   <authorUrl>https://bluewall.com</authorUrl>
