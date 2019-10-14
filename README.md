@@ -1,3 +1,5 @@
+![GitHub release (latest by date)](https://img.shields.io/github/v/release/bluewallweb/plg_http2push?style=for-the-badge)
+
 # Introduction
 
 HTTP/2 Push is a feature of the latest HTTP revision that enables the web server
