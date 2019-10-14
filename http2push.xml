@@ -2,8 +2,8 @@
 <!DOCTYPE install>
 <extension version="3.8" type="plugin" group="system" method="upgrade">
   <name>PLG_SYSTEM_HTTP2PUSH</name>
-  <description>PLG_HTTP2PUSH_DESCRIPTION</description>
-  <version>1.1.5</version>
+  <description>PLG_SYSTEM_HTTP2PUSH_DESCRIPTION</description>
+  <version>1.2.2</version>
   <author>Clay Freeman</author>
   <authorEmail>info@bluewall.com</authorEmail>
   <authorUrl>https://bluewall.com</authorUrl>
@@ -13,15 +13,18 @@
   <scriptfile>install.php</scriptfile>
   <files>
     <filename plugin="http2push">http2push.php</filename>
-    <folder>language</folder>
   </files>
+  <languages folder="language/en-GB">
+    <language tag="en-GB">en-GB.plg_system_http2push.ini</language>
+    <language tag="en-GB">en-GB.plg_system_http2push.sys.ini</language>
+  </languages>
   <config>
     <fields name="params">
       <fieldset name="basic">
         <field     name="header_limit" type="radio" default="0"
                   class="btn-group btn-group-yesno"
-                  label="PLG_HTTP2PUSH_HEADER_LIMIT"
-            description="PLG_HTTP2PUSH_HEADER_LIMIT_DESC">
+                  label="PLG_SYSTEM_HTTP2PUSH_HEADER_LIMIT"
+            description="PLG_SYSTEM_HTTP2PUSH_HEADER_LIMIT_DESC">
           <option value="0">JOFF</option>
           <option value="1">JON</option>
         </field>

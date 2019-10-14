@@ -1,232 +1,365 @@
-<?php
+<?php declare(strict_types = 1);
+/**
+ * This file is responsible for facilitating HTTP/2 preloads.
+ *
+ * This plugin generates preload/preconnect information for the 'Link' header so
+ * that the web server can push resources to the client using HTTP/2.
+ *
+ * @author     Clay Freeman <git@clayfreeman.com>
+ * @copyright  2018 Bluewall, LLC. All rights reserved.
+ * @license    GNU General Public License v3 (GPL-3.0).
+ */
+
+use \Joomla\CMS\Factory;
+use \Joomla\CMS\Plugin\CMSPlugin;
+
+/**
+ * The HTTP/2 Push automated Joomla! system plugin.
+ */
+final class plgSystemHttp2Push extends CMSPlugin {
   /**
-   * @copyright  Copyright (C) Clay Freeman. All rights reserved.
-   * @license    GNU Lesser General Public License version 3 or later.
+   * A reference to Joomla's application instance.
+   *
+   * @var  \Joomla\CMS\Application\CMSApplication
    */
-
-  // Prevent unauthorized access to this file outside of the context of a
-  // Joomla application
-  defined('_JEXEC') or die;
-
-  use \Joomla\CMS\Factory;
-  use \Joomla\CMS\Plugin\CMSPlugin;
+  protected $app;
 
   /**
-   * The HTTP/2 Push automated Joomla! system plugin.
+   * A mapping of element type to an associated 'Link' header clause renderer.
+   *
+   * This array is keyed by the element type (tag name; e.g. 'img' or 'link')
+   * and the value consists of a `callable` referring to the method handler.
+   *
+   * @var  array
    */
-  final class plgSystemHttp2Push extends CMSPlugin {
-    /**
-     * A reference to Joomla's application instance.
-     *
-     * @var  \Joomla\CMS\Application\CMSApplication
-     */
-    protected $app;
+  protected $methods;
 
-    /**
-     * Fetches a reference to Joomla's application instance and calls the
-     * constructor of the parent class.
-     */
-    public function __construct(&$subject, $config = array()) {
-      // Fetch a reference to Joomla's application instance
-      $this->app = Factory::getApplication();
-      // Call the parent class constructor to finish initializing the plugin
-      parent::__construct($subject, $config);
+  /**
+   * Fetches a reference to Joomla's application instance and calls the
+   * constructor of the parent class.
+   */
+  public function __construct(&$subject, $config = array()) {
+    // Fetch a reference to Joomla's application instance
+    $this->app = Factory::getApplication();
+    // Initialize the class method mapping
+    $this->methods = [
+      'img'        => \Closure::fromCallable([$this, 'processImage']),
+      'link'       => \Closure::fromCallable([$this, 'processStyle']),
+      'preconnect' => \Closure::fromCallable([$this, 'processPreconnect']),
+      'script'     => \Closure::fromCallable([$this, 'processScript'])
+    ];
+    // Call the parent class constructor to finish initializing the plugin
+    parent::__construct($subject, $config);
+  }
+
+  /**
+   * Builds a canonicalized file path (with query, if provided).
+   *
+   * This method is useful for generating absolute file paths for the 'Link'
+   * header where the hostname is not required.
+   *
+   * @param   array   $cpts  An array of URL components from `parse_url(...)`.
+   *
+   * @return  string         A localized path-only absolute URL.
+   */
+  public function buildFilePath(array $cpts): ?string {
+    return (isset($cpts['path']) ? $cpts['path'].
+      (isset($cpts['query']) ? '?'.$cpts['query'] : '') : NULL);
+  }
+
+  /**
+   * Builds a canonicalized host-only URL.
+   *
+   * This method will omit any path related information so that only
+   * connectivity information is conveyed in the resulting URL.
+   *
+   * @param   array   $cpts  An array of URL components from `parse_url(...)`.
+   *
+   * @return  string         A canonicalized host-only URL.
+   */
+  public function buildHostURL(array $cpts): ?string {
+    // Create a substring representing any available login information
+    $user  = ($cpts['user'] ?? '');
+    $pass  = ($cpts['pass'] ?? '');
+    $auth  = $user.(\strlen($pass) > 0 ? ':'.$pass : '');
+    $auth .= (\strlen($auth) > 0 ? '@' : '');
+    // Attempt to determine whether the default scheme should be HTTPS
+    $default_scheme = (!empty($_SERVER['HTTPS']) &&
+      $_SERVER['HTTPS'] !== 'off' ? 'https' : 'http');
+    // Determine the scheme of the resulting URL
+    $scheme = ($cpts['scheme'] ?? $default_scheme);
+    // Determine the port of the resulting URL
+    $port = ($cpts['port'] ?? '');
+    $port = (($scheme === 'http'  && $port ==  80) ? '' :
+            (($scheme === 'https' && $port == 443) ? '' : $port));
+    $port = (\strlen($port) > 0 ? ':'.$port : '');
+    // Assemble the constituent components of this URL
+    return (isset($cpts['host']) ? $scheme.'://'.$auth.
+      $cpts['host'].$port : NULL);
+  }
+
+  /**
+   * Builds a 'Link' header value from an array of resource clauses.
+   *
+   * If `$limit` is `TRUE`, any clauses that cause the full 'Link' header to
+   * overrun 8 KiB will be ignored.
+   *
+   * @param   array   $clauses  An array of pre-rendered 'Link' clauses.
+   * @param   bool    $limit    Whether to limit the size of the result.
+   *
+   * @return  string            A 'Link' header value.
+   */
+  protected function buildLinkHeader(array $clauses, bool $limit): string {
+    // Calculate the max value length of the Link header (just short of 8 KiB)
+    $max = (8192 - \strlen("Link: \r\n"));
+    // Reduce the clause list until the header size is under max if desired
+    while (\strlen($link = \implode(', ', $clauses)) > $max && $limit) {
+      // Attempt to remove a clause and try again
+      \array_pop($clauses);
     }
+    // Return the resulting 'Link' header value
+    return $link;
+  }
 
-    /**
-     * Builds a canonicalized file path (with query, if provided).
-     *
-     * This method is useful for generating absolute file paths for the 'Link'
-     * header where the hostname is not required.
-     *
-     * @param   array   $cpts  An array of URL components from `parse_url(...)`.
-     *
-     * @return  string         A localized path-only absolute URL.
-     */
-    public function buildFilePath(array $cpts): ?string {
-      return (isset($cpts['path']) ? $cpts['path'].
-        (isset($cpts['query']) ? '?'.$cpts['query'] : '') : null);
-    }
+  /**
+   * Extract resource candidate descriptors from the document body.
+   *
+   * The document body is searched with XPath to find all resources which may be
+   * applicable for preload/preconnect. '<link>' tags are not filtered at this
+   * stage for `rel='stylesheet'` equivalence.
+   *
+   * Once a result set is obtained using XPath, each resource candidate is
+   * reduced to a simplified descriptor that details how the resource should be
+   * handled when rendering its clause for the 'Link' header.
+   *
+   * @param   DOMDocument  $body  A document containing preload/preconnect
+   *                              resource candidates.
+   *
+   * @return  array               An array of objects describing how each
+   *                              resource should be handled.
+   */
+  protected function extractResources(\DOMDocument $body): array {
+    // Create an instance of `\DOMXPath` to support searching the document tree
+    // with XPath (similar to `\SimpleXMLElement`)
+    $xpath = new \DOMXPath($body);
+    // First, locate all possible resources for preload/preconnect
+    $res = $xpath->query('//img[@src]|//link[@href and @rel]|//script[@src]');
+    // Reduce the array of resource candidates to a list of item descriptors
+    return \array_map(function(\DOMElement $item): object {
+      // Fetch the name of the element node later used to satisfy
+      // element-specific preconditions
+      $type = $item->nodeName;
+      // Canonicalize the 'rel' attribute to the best of our ability
+      $rel = \strtolower($item->getAttribute('rel'));
+      // Attempt to determine the name of the attribute holding the URL
+      $attr = ($type === 'link' ? 'href' : 'src');
+      // Fetch the URL from the item and attempt to sanitize it
+      $url = $this->sanitizeURL($item->getAttribute($attr));
+      // Create an item descriptor to describe how it should be rendered
+      return (object)['rel' => $rel, 'type' => $type, 'url' => $url ?? ''];
+    }, \array_filter(\iterator_to_array($res), function(\DOMNode $node): bool {
+      // Ensure that we only process elements as opposed to all nodes
+      return $node instanceof \DOMElement;
+    }));
+  }
 
-    /**
-     * Builds a canonicalized host-only URL.
-     *
-     * This method will omit any path related information so that only
-     * connectivity information is conveyed in the resulting URL.
-     *
-     * @param   array   $cpts  An array of URL components from `parse_url(...)`.
-     *
-     * @return  string         A canonicalized host-only URL.
-     */
-    public function buildHostURL(array $cpts): ?string {
-      // Create a substring representing any available login information
-      $user  = ($cpts['user'] ?? '');
-      $pass  = ($cpts['pass'] ?? '');
-      $auth  = $user.(strlen($pass) > 0 ? ':'.$pass : '');
-      $auth .= (strlen($auth) > 0 ? '@' : '');
-      // Attempt to determine whether the default scheme should be HTTPS
-      $default_scheme = (!empty($_SERVER['HTTPS']) &&
-        $_SERVER['HTTPS'] !== 'off' ? 'https' : 'http');
-      // Determine the scheme of the resulting URL
-      $scheme = ($cpts['scheme'] ?? $default_scheme);
-      // Determine the port of the resulting URL
-      $port = ($cpts['port'] ?? '');
-      $port = (($scheme === 'http'  && $port ==  80) ? '' :
-              (($scheme === 'https' && $port == 443) ? '' : $port));
-      $port = (strlen($port) > 0 ? ':'.$port : '');
-      // Assemble the constituent components of this URL
-      return (isset($cpts['host']) ? $scheme.'://'.$auth.
-        $cpts['host'].$port : null);
-    }
-
-
-    /**
-     * Determines whether the host portion of a URL matches this server.
-     *
-     * This method canonicalizes the host-only portion of the provided URL and
-     * compares it to a host URL for this server. If the two URL's match, then
-     * the provided URL represents a "self-hosted" resource.
-     *
-     * @param   string  $url  A URL for a possible self-hosted resource.
-     *
-     * @return  bool          Whether the provided URL is self-hosted.
-     */
-    public function isSelfHosted(string $url): bool {
-      $target = $this->buildHostURL(parse_url($url));
+  /**
+   * Determines whether the host portion of a URL matches this server.
+   *
+   * This method canonicalizes the host-only portion of the provided URL and
+   * compares it to a host URL for this server. If the two URL's match, then the
+   * provided URL represents a "self-hosted" resource.
+   *
+   * If there is no host component in the provided argument, then the URL is
+   * self-hosted.
+   *
+   * @param   array  $cpts  An array of URL components for a possible
+   *                        self-hosted resource.
+   *
+   * @return  bool          Whether the provided URL is self-hosted.
+   */
+  public function isSelfHosted(array $cpts): bool {
+    if (isset($cpts['host'])) {
+      // Build a host URL from the provided URL components
+      $target = $this->buildHostURL($cpts);
+      // Build a host URL using the server environment for this request
       $server = $this->buildHostURL([
         'host' => ($_SERVER['SERVER_NAME']   ?? ''),
         'port' => ($_SERVER['SERVER_PORT']   ?? ''),
         'user' => ($_SERVER['PHP_AUTH_USER'] ?? ''),
         'pass' => ($_SERVER['PHP_AUTH_PW']   ?? '')
       ]);
-      return isset($target, $server) && $target === $server;
+      // If the target and server host URL's match, the provided URL
+      // is self-hosted
+      return (isset($target, $server) && $target === $server);
     }
+    // Assume that the URL is self hosted if there is no host component
+    return TRUE;
+  }
 
-    /**
-     * Analyzes the rendered HTTP response body for possible HTTP/2 push items.
-     *
-     * This method is triggered on the 'onAfterRender' Joomla! system plugin
-     * event. Once triggered, the application's HTTP response body should be
-     * available for parsing.
-     *
-     * The response is parsed to find external script tags, stylesheets, and
-     * images as resources that can be preloaded or preconnected using HTTP/2
-     * server push.
-     *
-     * After finding all applicable resources, their URL's are parsed for
-     * validity and a 'Link' header is generated to inform the web server of
-     * the push-capable resources.
-     */
-    public function onAfterRender(): void {
-      if (!$this->app->isAdmin()) {
-        // Create an array of ready-to-use 'Link' header clauses
-        $resources = [];
-        // Fetch the rendered application response body
-        $response  = new \DOMDocument();
-        $response->loadHTML($this->app->getBody());
-        $response  = simplexml_import_dom($response);
-        // Extract all applicable external resources from the DOM
-        $search    = $response->xpath('//script[@src]|'.
-          '//link[@href and @rel]|//img[@src]');
-        foreach ($search as $item) {
-          // Process each item based on its element name
-          if (strtolower($item->getName()) === 'img') {
-            // Sanitize the URL so that it is formatted in a predictable manner
-            $url = $this->sanitizeURL($item['src']);
-            $callback = [$this, 'processImage'];
-          } else if (strtolower($item->getName()) === 'link') {
-            // Skip link elements that aren't stylesheets
-            if (strtolower($item['rel']) !== 'stylesheet') continue;
-            // Sanitize the URL so that it is formatted in a predictable manner
-            $url = $this->sanitizeURL($item['href']);
-            $callback = [$this, 'processStyle'];
-          } else if (strtolower($item->getName()) === 'script') {
-            // Sanitize the URL so that it is formatted in a predictable manner
-            $url = $this->sanitizeURL($item['src']);
-            $callback = [$this, 'processScript'];
-          }
-          // Attempt to parse the URL into its constituent components
-          if (($url_components = parse_url($url ?? '')) !== FALSE) {
-            // Check if this URL should be treated as a preconnect ...
-            if (isset($url_components['host']) && !$this->isSelfHosted($url)) {
-              // Add this URL to the resource list
-              $resources[] = $this->processPreconnect(
-                $this->buildHostURL($url_components));
-            // ... or a preloaded file
-            } else {
-              // Add this URL to the resource list
-              $resources[] = $callback(
-                $this->buildFilePath($url_components));
-            }
-          }
-        }
-        $link = implode(', ', $resources);
-        // Determine whether we should limit the size of the 'Link' header
-        if ($this->params->get('header_limit', false)) {
-          // Reduce the resource list until the header size is <= 8 KiB
-          while (strlen($link = implode(', ', $resources)) > 8184) {
-            array_pop($resources);
-          }
-        }
-        // Update the list of HTTP/2 push resources via the 'Link' header
-        $this->app->setHeader('Link', $link, false);
+  /**
+   * Analyzes the rendered HTTP response body for possible HTTP/2 push items.
+   *
+   * This method is triggered on the 'onAfterRender' Joomla! system plugin
+   * event. Once triggered, the application's HTTP response body should be
+   * available for parsing.
+   *
+   * The response is parsed to find external script tags, stylesheets, and
+   * images that can be preloaded (or preconnected) using HTTP/2 server push.
+   *
+   * After finding all applicable resources, their URL's are parsed for validity
+   * and a 'Link' header is generated to inform the web server of the
+   * push-capable resources.
+   */
+  public function onAfterRender(): void {
+    // Don't execute this plugin on the back end; we don't want the site to
+    // accidentally become administratively inaccessible due to this plugin
+    if (!$this->app->isAdmin()) {
+      // Attempt to parse the document body into a `\DOMDocument` instance
+      $document = $this->parseDocumentBody($this->app->getBody());
+      // Ensure that the document body was successfully parsed before running
+      if ($document instanceof \DOMDocument) {
+        // Extract and prepare all applicable resources from the parsed
+        // document body
+        $resources = $this->extractResources($document);
+        $resources = $this->prepareResources($resources);
+        // Build the 'Link' header, keeping the configured size limit in check
+        $limit  = \boolval($this->params->get('header_limit', FALSE));
+        $header = $this->buildLinkHeader($resources, $limit);
+        // Set the header using the Joomla! application framework
+        $this->app->setHeader('Link', $header, FALSE);
       }
     }
-
-    /**
-     * Formats the provided path as a single 'Link' header image preload.
-     *
-     * @param   string  $path  A path to an image.
-     *
-     * @return  string         A 'Link' header clause.
-     */
-    public function processImage(string $path): string {
-      return '<'.$path.'>; rel=preload; as=image';
-    }
-
-    /**
-     * Formats the provided host as a single 'Link' header preconnect.
-     *
-     * @param   string  $host  A host-only URL.
-     *
-     * @return  string         A 'Link' header clause.
-     */
-    public function processPreconnect(string $host): string {
-      return '<'.$host.'>; rel=preconnect';
-    }
-
-    /**
-     * Formats the provided path as a single 'Link' header script preload.
-     *
-     * @param   string  $path  A path to a script.
-     *
-     * @return  string         A 'Link' header clause.
-     */
-    public function processScript(string $path): string {
-      return '<'.$path.'>; rel=preload; as=script';
-    }
-
-    /**
-     * Formats the provided path as a single 'Link' header style preload.
-     *
-     * @param   string  $path  A path to a stylesheet.
-     *
-     * @return  string         A 'Link' header clause.
-     */
-    public function processStyle(string $path): string {
-      return '<'.$path.'>; rel=preload; as=style';
-    }
-
-    /**
-     * Attempts to sanitize the provided URL for consistency.
-     *
-     * If the provided URL fails sanitization, `null` is returned instead.
-     *
-     * @param   string  $url  The input URL to be sanitized.
-     *
-     * @return  string        The resulting sanitized URL.
-     */
-    public function sanitizeURL(string $url): ?string {
-      return filter_var($url, FILTER_SANITIZE_URL) ?: null;
-    }
   }
+
+  /**
+   * Attempt to parse the provided HTML document body into a DOMDocument.
+   *
+   * If the provided document body declares a document type of "HTML"
+   * (case-insensitive), this method will attempt to silently parse it using
+   * `\DOMDocument::loadHTML()`. Error reporting is disabled to prevent overflow
+   * of `stderr` in FPM-based hosting environments.
+   *
+   * @param   string       $body  An HTML document body to be parsed.
+   *
+   * @return  DOMDocument         `\DOMDocument` instance on success,
+   *                              `NULL` on failure.
+   */
+  protected function parseDocumentBody(?string $body): ?\DOMDocument {
+    // Create a status variable used to determine whether the document was
+    // successfully parsed by `\DOMDocument`
+    $parsed = FALSE;
+    // Ensure that the document body supposes HTML format before continuing
+    if (\preg_match('/^\\s*<!DOCTYPE\\s+html\\b/i', $body)) {
+      // Configure libxml to use its internal logging mechanism and preserve the
+      // current libxml logging preference for later restoration
+      $logging = \libxml_use_internal_errors(TRUE);
+      // Create a DOMDocument instance to facilitate parsing the document body
+      $document = new \DOMDocument();
+      // Attempt to parse the document body as HTML
+      $parsed = ($document->loadHTML($body) === TRUE);
+      // Restore the previous logging preference for libxml
+      \libxml_use_internal_errors($logging);
+    }
+    // Check if the document body was parsed successfully
+    return $parsed === TRUE ? $document : NULL;
+  }
+
+  /**
+   * Create a unique array of 'Link' header clauses for each given resource.
+   *
+   * This method filters non-applicable '<link>' tags from the provided array.
+   *
+   * Resources with URL's that are not self hosted are converted to preconnect
+   * items since remote resources cannot be preloaded.
+   *
+   * @param   array  $resources  An array of resource descriptors.
+   *
+   * @return  array              An array of strings representing 'Link'
+   *                             header clauses.
+   */
+  protected function prepareResources(array $resources): array {
+    // Map each applicable resource to a 'Link' header clause
+    return \array_unique(\array_map(function(object $item): string {
+      // Parse the URL into its constituent components
+      $url = \parse_url($item->url);
+      // Determine whether this resource should be converted to a preconnect
+      $type = $this->isSelfHosted($url) ? $item->type : 'preconnect';
+      // Render this item using the appropriate method handler
+      return $this->methods[$type]($url);
+    }, \array_filter($resources, function(object $item): bool {
+      // Ensure that this item contains a valid URL
+      $valid  = \is_string($item->url) && \strlen($item->url) > 0;
+      // Ensure that the item type has a method handler mapping
+      $valid &= (\array_key_exists($item->type, $this->methods));
+      // Verify that '<link>' tags are stylesheets before continuing
+      $valid &= ($item->type !== 'link' || $item->rel === 'stylesheet');
+      return \boolval($valid);
+    })));
+  }
+
+  /**
+   * Formats the provided URL as a single 'Link' header image preload.
+   *
+   * @param   array   $cpts  A URL referring to an image.
+   *
+   * @return  string         A 'Link' header clause.
+   */
+  public function processImage(array $cpts): string {
+    // Convert the URL to a path-only URL
+    $url = $this->buildFilePath($cpts);
+    return '<'.$url.'>; rel=preload; as=image';
+  }
+
+  /**
+   * Formats the provided host as a single 'Link' header preconnect.
+   *
+   * @param   array   $cpts  A URL referring to a resource.
+   *
+   * @return  string         A 'Link' header clause.
+   */
+  public function processPreconnect(array $cpts): string {
+    // Convert the URL to a host-only URL
+    $url = $this->buildHostURL($cpts);
+    return '<'.$url.'>; rel=preconnect';
+  }
+
+  /**
+   * Formats the provided URL as a single 'Link' header script preload.
+   *
+   * @param   array   $cpts  A URL referring to a script.
+   *
+   * @return  string         A 'Link' header clause.
+   */
+  public function processScript(array $cpts): string {
+    // Convert the URL to a path-only URL
+    $url = $this->buildFilePath($cpts);
+    return '<'.$url.'>; rel=preload; as=script';
+  }
+
+  /**
+   * Formats the provided URL as a single 'Link' header style preload.
+   *
+   * @param   array   $cpts  A URL referring to a stylesheet.
+   *
+   * @return  string         A 'Link' header clause.
+   */
+  public function processStyle(array $cpts): string {
+    // Convert the URL to a path-only URL
+    $url = $this->buildFilePath($cpts);
+    return '<'.$url.'>; rel=preload; as=style';
+  }
+
+  /**
+   * Attempts to sanitize the provided URL for consistency.
+   *
+   * If the provided URL fails sanitization, `NULL` is returned instead.
+   *
+   * @param   string  $url  The input URL to be sanitized.
+   *
+   * @return  string        The resulting sanitized URL.
+   */
+  public function sanitizeURL(string $url): ?string {
+    return \filter_var($url, \FILTER_SANITIZE_URL) ?: NULL;
+  }
+}
