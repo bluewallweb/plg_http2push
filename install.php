@@ -77,7 +77,7 @@ final class plgSystemHttp2PushInstallerScript extends InstallerScript {
    * @return  bool                       `TRUE` if all prerequisites are
    *                                     satisfied, `FALSE` otherwise
    */
-  public function preflight(string $type, InstallerAdapter $parent): bool {
+  public function preflight($type, $parent) {
     // Check a list of classes that are required for this plugin to work
     $classes = \array_map([$this, 'classExists'], [
       '\\DOMDocument',
